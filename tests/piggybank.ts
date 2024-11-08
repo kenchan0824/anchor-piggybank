@@ -1,16 +1,36 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
-import { Piggybank } from "../target/types/piggybank";
+import { web3, Program, BN } from "@coral-xyz/anchor";
+import { PiggyBank } from "../target/types/piggy_bank";
+import { SimpleUser, findProgramAddress, u16 } from "@solardev/simple-web3";
+const assert = require("assert"); 
 
-describe("piggybank", () => {
-  // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.AnchorProvider.env());
+describe("Anchor Counter Program", () => {
 
-  const program = anchor.workspace.Piggybank as Program<Piggybank>;
+    const provider = anchor.AnchorProvider.env()
+    anchor.setProvider(provider);
 
-  it("Is initialized!", async () => {
-    // Add your test here.
-    const tx = await program.methods.initialize().rpc();
-    console.log("Your transaction signature", tx);
-  });
+    const program = anchor.workspace.PiggyBank as Program<PiggyBank>;
+    const owner = SimpleUser.generate(provider.connection)
+
+    it("counter account is initialized properly", async () => {
+        await owner.faucet();
+
+        const [bankPda, bump] = findProgramAddress(
+            program.programId,
+            ["bank", owner.publicKey],
+        );
+
+        await program.methods.openBank()
+            .accounts({
+                bank: bankPda,
+                owner: owner.publicKey,
+            })
+            .signers([owner])
+            .rpc();
+
+        const bankAccount = await program.account.piggyBank.fetch(bankPda);
+        assert.ok(bankAccount.owner.toBase58() === owner.publicKey.toBase58());
+        assert.ok(bankAccount.balance.toNumber() === 0);
+    });
+
 });
