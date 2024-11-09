@@ -13,19 +13,25 @@ describe("Anchor Counter Program", () => {
     const program = anchor.workspace.PiggyBank as Program<PiggyBank>;
     const owner = SimpleUser.generate(provider.connection)
 
-    it("counter account is initialized properly", async () => {
+    let bankPda: web3.PublicKey, vaultPda: web3.PublicKey;
+
+    before(async () => {
         await owner.faucet();
         await owner.mint("PEPE").commit();
 
-        const [bankPda, ] = findProgramAddress(
+        [bankPda, ] = findProgramAddress(
             program.programId,
             ["bank", owner.publicKey, owner.tokens["PEPE"].mint],
         );
 
-        const [vaultPda, ] = findProgramAddress(
+        [vaultPda, ] = findProgramAddress(
             ASSOCIATED_TOKEN_PROGRAM_ID,
             [bankPda, TOKEN_PROGRAM_ID, owner.tokens["PEPE"].mint],
         )
+        
+    });
+
+    it("piggy bank is opened properly", async () => {
 
         await program.methods.openBank()
             .accounts({
@@ -46,4 +52,20 @@ describe("Anchor Counter Program", () => {
         assert.ok(+amount === 0);
     });
 
+    it("deposit into piggy bank", async () => {
+
+        await program.methods.depositFund(new BN(100))
+            .accounts({
+                bank: bankPda,
+                owner_token_account: owner.tokens["PEPE"].account,
+                vault: vaultPda,
+                owner: owner.publicKey,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .signers([owner])
+            .rpc();
+
+        const {value: {amount}} = await provider.connection.getTokenAccountBalance(vaultPda);
+        assert.ok(+amount === 100);
+    });
 });

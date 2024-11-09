@@ -18,6 +18,21 @@ pub mod piggy_bank {
         Ok(())
     }
 
+    pub fn deposit_fund(ctx: Context<DepositFund>, amount: u64) -> Result<()> {
+        let bank = &mut ctx.accounts.bank;
+        let token_program = ctx.accounts.token_program.to_account_info();
+        let cpi_accounts = token::Transfer {
+            from: ctx.accounts.owner_token_account.to_account_info(),
+            to: ctx.accounts.vault.to_account_info(),
+            authority: ctx.accounts.owner.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(token_program, cpi_accounts);
+        token::transfer(cpi_ctx, amount)?;
+        bank.balance += amount;
+
+        Ok(())
+    }
+    
 }
 
 #[derive(Accounts)]
@@ -49,7 +64,30 @@ pub struct OpenBank<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
-#[account]
+#[derive(Accounts)]
+pub struct DepositFund<'info> {
+    #[account(mut)]
+    pub bank: Account<'info, PiggyBank>,
+
+    #[account(
+        mut,
+        associated_token::mint = bank.mint, 
+        associated_token::authority = owner,
+    )]
+    pub owner_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        associated_token::mint = bank.mint, 
+        associated_token::authority = bank,
+    )]
+    pub vault: Account<'info, TokenAccount>,
+
+    pub owner: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+    #[account]
 #[derive(InitSpace)]
 pub struct PiggyBank {
     pub owner: Pubkey,
