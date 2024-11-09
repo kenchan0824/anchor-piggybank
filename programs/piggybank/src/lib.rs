@@ -42,7 +42,7 @@ pub struct OpenBank<'info> {
 
     #[account(mut)]
     pub owner: Signer<'info>,
-    pub mint: Account<'info, token::Mint>,
+    pub mint: Account<'info, Mint>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
