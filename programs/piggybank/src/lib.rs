@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token::{self, AssociatedToken};
 use anchor_spl::token::{self, Token, TokenAccount, Mint};
 
 declare_id!("8izb58TQydRmNiWCygaQBrVeRgh1XUNPxZjkbWqr8dLj");
@@ -66,18 +65,20 @@ pub struct InitBank<'info> {
     
     #[account(
         init,
+        payer = owner,
         seeds = [b"bank", owner.key().as_ref(), mint.key().as_ref()],
         bump,
         space = 8 + PiggyBank::INIT_SPACE,
-        payer = owner
     )]
     pub bank: Account<'info, PiggyBank>,
 
     #[account(
         init, 
         payer = owner, 
-        associated_token::mint = mint, 
-        associated_token::authority = bank,
+        seeds = [b"bank_vault", bank.key().as_ref()],
+        bump,
+        token::mint = mint, 
+        token::authority = bank,
     )]
     pub vault: Account<'info, TokenAccount>,
 
@@ -87,7 +88,6 @@ pub struct InitBank<'info> {
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
@@ -100,17 +100,15 @@ pub struct Deposit<'info> {
     )]
     pub bank: Account<'info, PiggyBank>,
 
-    #[account(
-        mut,
-        associated_token::mint = bank.mint, 
-        associated_token::authority = owner,
-    )]
+    #[account(mut)]
     pub owner_token_account: Account<'info, TokenAccount>,
 
     #[account(
         mut,
-        associated_token::mint = bank.mint, 
-        associated_token::authority = bank,
+        seeds = [b"bank_vault", bank.key().as_ref()],
+        bump,
+        token::mint = bank.mint, 
+        token::authority = bank,
     )]
     pub vault: Account<'info, TokenAccount>,
 
@@ -130,16 +128,14 @@ pub struct CloseBank<'info> {
 
     #[account(
         mut,
-        associated_token::mint = bank.mint, 
-        associated_token::authority = bank,
+        seeds = [b"bank_vault", bank.key().as_ref()],
+        bump,
+        token::mint = bank.mint, 
+        token::authority = bank,
     )]
     pub vault: Account<'info, TokenAccount>,
 
-    #[account(
-        mut,
-        associated_token::mint = bank.mint, 
-        associated_token::authority = owner,
-    )]
+    #[account(mut)]
     pub owner_token_account: Account<'info, TokenAccount>,
 
     pub owner: Signer<'info>,

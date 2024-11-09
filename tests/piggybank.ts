@@ -5,7 +5,7 @@ import { PiggyBank } from "../target/types/piggy_bank";
 import { SimpleUser, findProgramAddress} from "@solardev/simple-web3";
 const assert = require("assert"); 
 
-describe("Anchor Counter Program", () => {
+describe("Anchor PiggyBank Program", () => {
 
     const provider = anchor.AnchorProvider.env()
     anchor.setProvider(provider);
@@ -28,10 +28,9 @@ describe("Anchor Counter Program", () => {
         );
 
         [vaultPda, ] = findProgramAddress(
-            ASSOCIATED_TOKEN_PROGRAM_ID,
-            [bankPda, TOKEN_PROGRAM_ID, owner.tokens["PEPE"].mint],
-        )
-        
+            program.programId,
+            ["bank_vault", bankPda],
+        );
     });
 
     it("piggy bank is opened properly", async () => {
@@ -60,7 +59,7 @@ describe("Anchor Counter Program", () => {
         await program.methods.deposit(new BN(100e9))
             .accounts({
                 bank: bankPda,
-                owner_token_account: owner.tokens["PEPE"].account,
+                ownerTokenAccount: owner.tokenAccounts["PEPE"],
                 vault: vaultPda,
                 owner: owner.publicKey,
                 tokenProgram: TOKEN_PROGRAM_ID,
@@ -80,6 +79,7 @@ describe("Anchor Counter Program", () => {
             .accounts({
                 bank: bankPda,
                 vault: vaultPda,
+                ownerTokenAccount: owner.tokenAccounts["PEPE"],
                 owner: owner.publicKey,
                 tokenProgram: TOKEN_PROGRAM_ID,
             })
