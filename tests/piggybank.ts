@@ -1,10 +1,8 @@
 import * as anchor from "@coral-xyz/anchor";
 import { web3, Program, BN } from "@coral-xyz/anchor";
-import { getAssociatedTokenAddress, 
-    TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID,  
-} from '@solana/spl-token';
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { PiggyBank } from "../target/types/piggy_bank";
-import { SimpleUser, findProgramAddress, u16 } from "@solardev/simple-web3";
+import { SimpleUser, findProgramAddress} from "@solardev/simple-web3";
 const assert = require("assert"); 
 
 describe("Anchor Counter Program", () => {
@@ -19,21 +17,20 @@ describe("Anchor Counter Program", () => {
         await owner.faucet();
         await owner.mint("PEPE").commit();
 
-        const [bankPda, bump] = findProgramAddress(
+        const [bankPda, ] = findProgramAddress(
             program.programId,
             ["bank", owner.publicKey, owner.tokens["PEPE"].mint],
         );
 
-        const vaultAddr = await getAssociatedTokenAddress(
-            owner.tokens["PEPE"].mint,
-            bankPda,
-            true
-        );
+        const [vaultPda, ] = findProgramAddress(
+            ASSOCIATED_TOKEN_PROGRAM_ID,
+            [bankPda, TOKEN_PROGRAM_ID, owner.tokens["PEPE"].mint],
+        )
 
         await program.methods.openBank()
             .accounts({
                 bank: bankPda,
-                vault: vaultAddr,
+                vault: vaultPda,
                 owner: owner.publicKey,
                 mint: owner.tokens["PEPE"].mint,
             })
@@ -45,7 +42,7 @@ describe("Anchor Counter Program", () => {
         assert.ok(bankAccount.mint.toBase58() === owner.tokens["PEPE"].mint.toBase58());
         assert.ok(bankAccount.balance.toNumber() === 0);
 
-        const {value: {amount}} = await provider.connection.getTokenAccountBalance(vaultAddr);
+        const {value: {amount}} = await provider.connection.getTokenAccountBalance(vaultPda);
         assert.ok(+amount === 0);
     });
 
