@@ -13,11 +13,14 @@ describe("Anchor Counter Program", () => {
     const program = anchor.workspace.PiggyBank as Program<PiggyBank>;
     const owner = SimpleUser.generate(provider.connection)
 
-    let bankPda: web3.PublicKey, vaultPda: web3.PublicKey;
+    let bankPda: web3.PublicKey; 
+    let vaultPda: web3.PublicKey;
+    let initBalance: number;
 
     before(async () => {
         await owner.faucet();
         await owner.mint("PEPE").commit();
+        ({amount: initBalance} = await owner.balance("PEPE"));
 
         [bankPda, ] = findProgramAddress(
             program.programId,
@@ -33,7 +36,7 @@ describe("Anchor Counter Program", () => {
 
     it("piggy bank is opened properly", async () => {
 
-        await program.methods.openBank()
+        await program.methods.initBank()
             .accounts({
                 bank: bankPda,
                 vault: vaultPda,
@@ -54,7 +57,7 @@ describe("Anchor Counter Program", () => {
 
     it("deposit into piggy bank", async () => {
 
-        await program.methods.depositFund(new BN(100))
+        await program.methods.deposit(new BN(100e9))
             .accounts({
                 bank: bankPda,
                 owner_token_account: owner.tokens["PEPE"].account,
@@ -66,6 +69,28 @@ describe("Anchor Counter Program", () => {
             .rpc();
 
         const {value: {amount}} = await provider.connection.getTokenAccountBalance(vaultPda);
-        assert.ok(+amount === 100);
+        assert.ok(+amount === 100e9);
+
+        const {amount: newBalance} = await owner.balance("PEPE");
+        assert.ok(newBalance === initBalance - 100);
     });
+
+    it("close the piggy bank", async () => {
+        await program.methods.closeBank()
+            .accounts({
+                bank: bankPda,
+                vault: vaultPda,
+                owner: owner.publicKey,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .signers([owner])
+            .rpc();
+
+        const {value: {amount}} = await provider.connection.getTokenAccountBalance(vaultPda);
+        assert.ok(+amount === 0);
+
+        const {amount: newBalance} = await owner.balance("PEPE");
+        assert.ok(newBalance === initBalance);
+    });
+
 });
