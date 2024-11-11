@@ -7,11 +7,13 @@ declare_id!("8izb58TQydRmNiWCygaQBrVeRgh1XUNPxZjkbWqr8dLj");
 pub mod piggy_bank {
     use super::*;
 
-    pub fn init_bank(ctx: Context<InitBank>) -> Result<()> {
+    pub fn init_bank(ctx: Context<InitBank>, timeout: i64) -> Result<()> {
         let bank = &mut ctx.accounts.bank;
         bank.owner = ctx.accounts.owner.key();
         bank.mint = ctx.accounts.mint.key();
         bank.balance = 0;
+        bank.start_time = Clock::get()?.unix_timestamp;
+        bank.timeout = timeout;
 
         Ok(())
     }
@@ -35,6 +37,12 @@ pub mod piggy_bank {
     
     pub fn close_bank(ctx: Context<CloseBank>) -> Result<()> {
         let bank = &mut ctx.accounts.bank;
+        
+        // Check if the bank is ready to be closed
+        let current_time = Clock::get()?.unix_timestamp;
+        if current_time < bank.start_time + bank.timeout {
+            return Err(ErrorCode::BankNotReady.into());
+        }
         
         // Transfer the balance to the owner
         let cpi_program = ctx.accounts.token_program.to_account_info();
@@ -162,4 +170,12 @@ pub struct PiggyBank {
     pub owner: Pubkey,
     pub mint: Pubkey,
     pub balance: u64,
+    pub start_time: i64,
+    pub timeout: i64,
+}
+
+#[error_code]
+pub enum ErrorCode {
+    #[msg("Bank not ready to be closed")]
+    BankNotReady,
 }

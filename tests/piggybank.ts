@@ -5,6 +5,10 @@ import { PiggyBank } from "../target/types/piggy_bank";
 import { SimpleUser, findProgramAddress} from "@solardev/simple-web3";
 const assert = require("assert"); 
 
+function wait(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 describe("Anchor PiggyBank Program", () => {
 
     const provider = anchor.AnchorProvider.env()
@@ -18,6 +22,9 @@ describe("Anchor PiggyBank Program", () => {
     let initBalance: number;
 
     before(async () => {
+
+        console.log("Owner: ", owner.publicKey.toBase58());
+
         await owner.faucet();
         await owner.mint("PEPE").commit();
         ({amount: initBalance} = await owner.balance("PEPE"));
@@ -34,8 +41,8 @@ describe("Anchor PiggyBank Program", () => {
     });
 
     it("piggy bank is opened properly", async () => {
-
-        await program.methods.initBank()
+        const timeout_secs = new BN(2);
+        await program.methods.initBank(timeout_secs)
             .accounts({
                 bank: bankPda,
                 vault: vaultPda,
@@ -74,7 +81,34 @@ describe("Anchor PiggyBank Program", () => {
         assert.ok(newBalance === initBalance - 100);
     });
 
+    it("close the piggy bank should fail before timeout", async () => {
+        
+        let failed = false;
+        try {
+            await program.methods.closeBank()
+                .accounts({
+                    bank: bankPda,
+                    vault: vaultPda,
+                    ownerTokenAccount: owner.tokenAccounts["PEPE"],
+                    owner: owner.publicKey,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .signers([owner])
+                .rpc();
+        
+        } catch(e) {
+            failed = true;
+        }
+
+        assert.ok(failed);
+    });
+
+
     it("close the piggy bank", async () => {
+        
+        console.log("Wait for 2 seconds...");
+        await wait(2000);
+
         await program.methods.closeBank()
             .accounts({
                 bank: bankPda,
