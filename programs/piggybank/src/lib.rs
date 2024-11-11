@@ -36,7 +36,8 @@ pub mod piggy_bank {
     pub fn close_bank(ctx: Context<CloseBank>) -> Result<()> {
         let bank = &mut ctx.accounts.bank;
         
-        let token_program = ctx.accounts.token_program.to_account_info();
+        // Transfer the balance to the owner
+        let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_accounts = token::Transfer {
             from: ctx.accounts.vault.to_account_info(),
             to: ctx.accounts.owner_token_account.to_account_info(),
@@ -50,8 +51,18 @@ pub mod piggy_bank {
             &[ctx.bumps.bank]
         ];
         let signer = &[&seeds[..]];
-        let cpi_ctx = CpiContext::new_with_signer(token_program, cpi_accounts, signer);
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
         token::transfer(cpi_ctx, bank.balance)?;
+
+        // Close the vault account
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_accounts = token::CloseAccount {
+            account: ctx.accounts.vault.to_account_info(),
+            destination: ctx.accounts.owner_token_account.to_account_info(),
+            authority: bank.to_account_info(),
+        }; 
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+        token::close_account(cpi_ctx)?;
 
         bank.balance = 0;
 
@@ -112,6 +123,7 @@ pub struct Deposit<'info> {
     )]
     pub vault: Account<'info, TokenAccount>,
 
+    #[account(mut)]
     pub owner: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }
@@ -120,6 +132,7 @@ pub struct Deposit<'info> {
 pub struct CloseBank<'info> {
     #[account(
         mut,
+        close = owner,
         seeds = [b"bank", owner.key().as_ref(), bank.mint.as_ref()],
         bump,
         has_one = owner,
@@ -138,6 +151,7 @@ pub struct CloseBank<'info> {
     #[account(mut)]
     pub owner_token_account: Account<'info, TokenAccount>,
 
+    #[account(mut)]
     pub owner: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }

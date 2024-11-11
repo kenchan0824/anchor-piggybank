@@ -86,9 +86,6 @@ describe("Anchor PiggyBank Program", () => {
             .signers([owner])
             .rpc();
 
-        const {value: {amount}} = await provider.connection.getTokenAccountBalance(vaultPda);
-        assert.ok(+amount === 0);
-
         const {amount: newBalance} = await owner.balance("PEPE");
         assert.ok(newBalance === initBalance);
     });
