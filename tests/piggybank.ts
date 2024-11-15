@@ -66,7 +66,7 @@ describe("Anchor PiggyBank Program", () => {
         await program.methods.deposit(new BN(100e9))
             .accounts({
                 bank: bankPda,
-                ownerTokenAccount: owner.tokenAccounts["PEPE"],
+                ownerTokenAccount: owner.tokens["PEPE"].tokenAccount,
                 vault: vaultPda,
                 owner: owner.publicKey,
                 tokenProgram: TOKEN_PROGRAM_ID,
@@ -89,7 +89,7 @@ describe("Anchor PiggyBank Program", () => {
                 .accounts({
                     bank: bankPda,
                     vault: vaultPda,
-                    ownerTokenAccount: owner.tokenAccounts["PEPE"],
+                    ownerTokenAccount: owner.tokens["PEPE"].tokenAccount,
                     owner: owner.publicKey,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 })
@@ -113,7 +113,7 @@ describe("Anchor PiggyBank Program", () => {
             .accounts({
                 bank: bankPda,
                 vault: vaultPda,
-                ownerTokenAccount: owner.tokenAccounts["PEPE"],
+                ownerTokenAccount: owner.tokens["PEPE"].tokenAccount,
                 owner: owner.publicKey,
                 tokenProgram: TOKEN_PROGRAM_ID,
             })
